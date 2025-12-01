@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Torre Eiffel - Controle Exclusivo</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="Imagens/favcon.png">
+    <link rel="shortcut icon" type="image/png" href="Imagens/favcon.png">
+    
+    <!-- Estilos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body, html { 
+
+            margin: 0; padding: 0; overflow: hidden; 
+            background-color: #050505; 
+            font-family: sans-serif; color: white; 
+            height: 100%;
+            transition: background 0.5s ease;
+
+        }
+        
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        /* Copyright Footer */
+        #copyright-footer {
+            position: fixed; bottom: 10px; left: 10px; z-index: 5;
+            color: #666; font-size: 0.65rem; font-family: monospace;
+            pointer-events: none; user-select: none; text-align: left;
+            line-height: 1.2; white-space: nowrap; letter-spacing: 0.5px;
+        }
+        
+        /* UI Principal */
+        #ui-layer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            display: flex; flex-direction: column; align-items: center;
+            z-index: 10; pointer-events: none;
+            opacity: 1; 
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        
+        /* Tela de Login */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9999; display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(8px); pointer-events: auto;
+        }
+        .login-box {
+            background: #1a1a1a; padding: 30px; border-radius: 20px;
+            border: 1px solid #333; text-align: center; width: 90%; max-width: 350px;
+            box-shadow: 0 0 50px rgba(251, 191, 36, 0.1); position: relative;
+        }
+        .close-login { position: absolute; top: 10px; right: 15px; color: #666; cursor: pointer; font-size: 1.5rem; }
+        .login-input {
+            width: 100%; padding: 15px; margin: 20px 0; background: #333; 
+            border: 1px solid #555; color: white; border-radius: 10px; 
+            font-size: 1.2rem; text-align: center; outline: none; transition: border 0.3s;
+        }
+        .login-input:focus { border-color: #fbbf24; }
+        .toggle-password-btn {
+            position: absolute; right: 15px; background: none; border: none; 
+            color: #888; cursor: pointer; font-size: 1.2rem; 
+            transition: color 0.2s; padding: 0; width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .toggle-password-btn:hover { color: #fbbf24; }
+        
+        /* Botão de Mute/Unmute */
+        #audio-toggle-btn {
+            position: fixed; top: 20px; right: 20px; z-index: 100;
+            background: rgba(20, 20, 20, 0.8); border: 1px solid #333; 
+            color: #888; cursor: pointer; width: 40px; height: 40px;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s; padding: 0;
+        }
+        #audio-toggle-btn:hover { border-color: #fbbf24; color: #fbbf24; background: rgba(20, 20, 20, 0.95); }
+        #audio-toggle-btn.muted { color: #ff4444; }
+        #audio-toggle-btn.muted:hover { border-color: #ff4444; color: #ff6666; }
+        .login-btn {
+            background: #fbbf24; color: black; font-weight: bold;
+            padding: 15px 40px; border-radius: 10px; border: none;
+            font-size: 1.1rem; cursor: pointer; width: 100%;
+            transition: transform 0.2s;
+        }
+        .login-btn:active { transform: scale(0.95); }
+        .login-btn:disabled { background: #555; color: #888; cursor: wait; }
+
+        /* Painel de Controle com SCROLLBAR VISÍVEL */
+        .interactive-area { 
+            pointer-events: auto; background: rgba(20,20,20,0.9); padding: 20px; padding-top: 10px; 
+            border-top-left-radius: 20px; border-top-right-radius: 20px; border: 1px solid #333; border-bottom: none;
+            backdrop-filter: blur(10px); box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.5);
+            display: flex; flex-direction: column; align-items: center; 
+            min-width: 300px;
+            max-height: 70vh; 
+            overflow-y: auto; 
+            scrollbar-width: thin; 
+            scrollbar-color: #555 #1a1a1a;
+        }
+        
+        /* Responsividade: Aumenta no PC, limita no celular */
+        @media (min-width: 768px) {
+            .interactive-area {
+                min-width: 400px;
+                max-width: 90%;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            .interactive-area {
+                min-width: calc(100vw - 40px);
+                max-width: calc(100vw - 40px);
+                max-height: calc(100vh - 100px);
+            }
+        }
+        .interactive-area::-webkit-scrollbar { width: 6px; }
+        .interactive-area::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 3px; margin: 10px 0; }
+        .interactive-area::-webkit-scrollbar-thumb { background-color: #555; border-radius: 3px; }
+        .interactive-area::-webkit-scrollbar-thumb:hover { background-color: #fbbf24; }
+        
+        #toggle-btn { width: 100%; height: 30px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: #fbbf24; margin-bottom: 5px; flex-shrink: 0; }
+        #ui-layer.hidden-ui { transform: translateY(calc(100% - 40px)); }
+        #arrow-icon { transition: transform 0.4s ease; }
+        #ui-layer.hidden-ui #arrow-icon { transform: rotate(180deg); }
+        
+        .header-bar { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px; flex-shrink: 0; }
+        h1 { color: #fbbf24; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; margin: 0; }
+        
+        #connect-status-btn {
+            background: transparent; border: 1px solid #555; color: #888;
+            font-size: 0.7rem; padding: 4px 8px; border-radius: 6px;
+            cursor: pointer; display: flex; align-items: center; gap: 5px;
+            transition: all 0.3s; text-transform: uppercase; font-weight: bold;
+        }
+        #connect-status-btn.connected { border-color: #00ff00; color: #00ff00; background: rgba(0, 255, 0, 0.1); }
+        #connect-status-btn.locked { border-color: #ff0000; color: #ff0000; background: rgba(255, 0, 0, 0.1); cursor: not-allowed; }
+        
+        #status-msg { color: #888; font-size: 0.75rem; text-align: center; margin-top: 10px; font-family: monospace; flex-shrink: 0; padding-bottom: 10px; }
+        
+        .effects-grid { 
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; 
+            margin-top: 15px; padding-top: 15px; border-top: 1px solid #333; padding-right: 5px; 
+            transition: opacity 0.3s;
+        }
+        
+        /* Responsividade para grid de efeitos */
+        @media (max-width: 480px) {
+            .effects-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                padding-right: 0px;
+            }
+        }
+        
+        .effect-btn { background: #333; border: none; border-radius: 8px; color: #ddd; font-size: 0.7rem; padding: 10px 4px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; font-weight: bold; display: flex; justify-content: center; align-items: center; }
+        .effect-btn.active { background: #fbbf24; color: #000; box-shadow: 0 0 10px #fbbf24; }
+    </style>
+
+    <!-- Bibliotecas -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/@jaames/iro@5.5.2/dist/iro.min.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body>
+
+    <!-- Audio em Loop -->
+    <audio id="background-audio" preload="auto" loop style="display: none;">
+        <source src="Audio/Audio.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Botão de Mutar/Desmutar -->
+    <button id="audio-toggle-btn" onclick="toggleAudio()" title="Mutar Áudio">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a7 7 0 0 1 0 9.9M19.07 4.93a11 11 0 0 1 0 15.66"></path></svg>
+    </button>
+
+    <!-- TELA DE LOGIN (MODAL) -->
+    <div id="login-screen">
+        <div class="login-box">
+            <span class="close-login" onclick="closeLogin()">×</span>
+            <h1 style="margin-bottom: 5px; font-size: 1.5rem;">Controle Real</h1>
+            <p id="login-msg" style="color:#888; font-size: 0.9rem; margin-bottom: 20px;">Digite a senha para assumir o controle.</p>
+            <div style="position: relative; display: flex; align-items: center;">
+                <input type="password" id="password-input" class="login-input" placeholder="Senha" style="margin: 20px 0; width: 100%; padding-right: 45px;">
+                <button id="toggle-password-btn" class="toggle-password-btn" onclick="togglePasswordVisibility()" title="Mostrar/Ocultar Senha">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+            </div>
+            <button id="login-action-btn" class="login-btn" onclick="checkPassword()">ASSUMIR CONTROLE</button>
+            <p id="login-error" style="color: red; margin-top: 15px; display: none; font-size: 0.9rem; line-height: 1.2;">Senha Incorreta!</p>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    
+    <!-- Copyright Footer (Not Touchable) -->
+    <div id="copyright-footer">
+        © 2025 Julio Cezar & Luiz Merchiori<br>Todos os Direitos Reservados
+    </div>
+    
+    <div id="ui-layer">
+        <div class="interactive-area">
+            <div id="toggle-btn" onclick="toggleUI()">
+                <svg id="arrow-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            
+            <div class="header-bar">
+                <h1>Torre Eiffel</h1>
+                <button id="connect-status-btn" onclick="openLogin()">
+                    <svg id="lock-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> <span id="conn-text">Simulação</span>
+                </button>
+            </div>
+
+            <div id="color-picker"></div>
+            
+            <div id="effects-container" class="effects-grid">
+                <button class="effect-btn active" onclick="setEffect('solid')" id="btn-solid">Fixa</button>
+                <button class="effect-btn" onclick="setEffect('rainbow')" id="btn-rainbow">Rainbow</button>
+                <button class="effect-btn" onclick="setEffect('fire')" id="btn-fire">Fogo</button>
+                <button class="effect-btn" onclick="setEffect('heartbeat')" id="btn-heartbeat">Batimento</button>
+                <button class="effect-btn" onclick="setEffect('pisca')" id="btn-pisca">Pisca</button>
+                <button class="effect-btn" onclick="setEffect('disco')" id="btn-disco">Disco</button>
+                <button class="effect-btn" onclick="setEffect('fade')" id="btn-fade">Fade</button>
+                <button class="effect-btn" onclick="setEffect('thunder')" id="btn-thunder">Trovão</button>
+                <button class="effect-btn" onclick="setEffect('sos')" id="btn-sos">SOS</button>
+                <button class="effect-btn" onclick="setEffect('france')" id="btn-france">França</button>
+                <button class="effect-btn" onclick="setEffect('brazil')" id="btn-brazil">Brasil</button>
+                <button class="effect-btn" onclick="setEffect('aurora')" id="btn-aurora">Aurora</button>
+                <button class="effect-btn" onclick="setEffect('xmas')" id="btn-xmas">Natal</button>
+                <button class="effect-btn" onclick="setEffect('halloween')" id="btn-halloween">Halloween</button>
+                <button class="effect-btn" onclick="setEffect('sunset')" id="btn-sunset">Sunset</button>
+                <button class="effect-btn" onclick="setEffect('police')" id="btn-police">Polícia</button>
+                <button class="effect-btn" onclick="setEffect('ice')" id="btn-ice">Gelo</button>
+                <button class="effect-btn" onclick="setEffect('candy')" id="btn-candy">Candy</button>
+            </div>
+
+            <div id="status-msg">Modo: Simulador Local</div>
+        </div>
+    </div>
+
+    <script>
+        // --- SISTEMA DE ÁUDIO ---
+        function initAudio() {
+            const audio = document.getElementById('background-audio');
+            if(audio) {
+                audio.volume = 0.3; // 30% de volume
+                audio.play().catch(err => {
+                    console.log("Autoplay bloqueado. O áudio iniciará ao primeiro clique/interação.", err);
+                    // Tenta reproduzir após primeira interação
+                    document.addEventListener('click', function playAudioOnce() {
+                        audio.play().catch(e => console.log("Erro ao reproduzir áudio:", e));
+                        document.removeEventListener('click', playAudioOnce);
+                    }, { once: true });
+                });
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('password-input');
+            const btn = document.getElementById('toggle-password-btn');
+            
+            if(input.type === 'password') {
+                input.type = 'text';
+                btn.title = 'Ocultar Senha';
+            } else {
+                input.type = 'password';
+                btn.title = 'Mostrar Senha';
+            }
+        }
+
+        let isAudioMuted = false;
+
+        function toggleAudio() {
+            const audio = document.getElementById('background-audio');
+            const btn = document.getElementById('audio-toggle-btn');
+            
+            if(audio.paused) {
+                audio.play().catch(e => console.log("Erro ao reproduzir áudio:", e));
+                isAudioMuted = false;
+                btn.classList.remove('muted');
+                btn.title = 'Mutar Áudio';
+            } else {
+                audio.pause();
+                isAudioMuted = true;
+                btn.classList.add('muted');
+                btn.title = 'Desmutar Áudio';
+            }
+        }
+
+        // --- 1. SEGURANÇA E LÓGICA DE CONEXÃO ---
+        const MY_PASSWORD = "paladinoseiffel"; 
+        
+        let amITheController = false; 
+        let keepAliveInterval; 
+
+        // --- 2. CONFIGURAÇÃO FIREBASE ---
+        // IMPORTANTE: Preencha aqui com os seus dados do Firebase
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_PROJETO.firebaseapp.com",
+            databaseURL: "https://SEU_PROJETO-default-rtdb.firebaseio.com",
+            projectId: "SEU_PROJETO",
+            storageBucket: "SEU_PROJETO.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        let database;
+
+        function initFirebase() {
+            if (!firebase.apps.length) {
+                try {
+                    firebase.initializeApp(firebaseConfig);
+                    database = firebase.database();
+                    return true;
+                } catch (e) {
+                    console.error("Erro Firebase (Configuração Vazia?):", e);
+                    return false;
+                }
+            }
+            database = firebase.database();
+            return true;
+        }
+
+        function setupSpectatorMode() {
+            if (!database) return;
+            
+            try {
+                database.ref('torre/cor').on('value', (snapshot) => {
+                    // Só atualiza se eu não estiver interagindo agora (para não brigar com o input local)
+                    if(!amITheController && snapshot.val()) {
+                        updateVisuals(snapshot.val());
+                        if(colorPicker && colorPicker.color) {
+                            colorPicker.color.hexString = snapshot.val();
+                        }
+                    }
+                });
+                database.ref('torre/efeito').on('value', (snapshot) => {
+                    if(!amITheController && snapshot.val()) {
+                        currentEffect = snapshot.val();
+                        updateUIButtons(currentEffect);
+                    }
+                });
+            } catch(e) {
+                console.error("Erro ao configurar modo espectador:", e);
+            }
+        }
+
+        function openLogin() {
+            if(amITheController) return;
+            
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('password-input').value = "";
+            document.getElementById('login-error').style.display = 'none';
+            document.getElementById('password-input').focus();
+            
+            // Verifica status do banco
+            if(initFirebase()) {
+                setupSpectatorMode();
+                
+                const statusRef = database.ref('torre/status/lastActive');
+                if(!statusRef) return;  // BUG FIX: Null check
+                
+                statusRef.once('value').then(snapshot => {
+                    const lastActive = snapshot.val() || 0;
+                    const now = Date.now();
+                    
+                    if(now - lastActive < 15000) {
+                        document.getElementById('login-msg').innerText = "Sistema ocupado. Aguarde.";
+                        document.getElementById('login-msg').style.color = "orange";
+                    } else {
+                        document.getElementById('login-msg').innerText = "Livre. Digite a senha.";
+                        document.getElementById('login-msg').style.color = "#4ade80"; 
+                    }
+                }).catch(err => console.error("Erro ao verificar disponibilidade:", err));  // BUG FIX: Error handling
+            }
+        }
+
+        function closeLogin() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('login-error').style.display = 'none';
+            const btn = document.getElementById('login-action-btn');
+            btn.innerText = "ASSUMIR CONTROLE";
+            btn.disabled = false;
+        }
+
+        function showLoginError(msg) {
+            const errDiv = document.getElementById('login-error');
+            errDiv.innerText = msg;
+            errDiv.style.display = 'block';
+            const btn = document.getElementById('login-action-btn');
+            btn.innerText = "ASSUMIR CONTROLE";
+            btn.disabled = false;
+        }
+
+        function checkPassword() {
+            const input = document.getElementById('password-input').value;
+            const btn = document.getElementById('login-action-btn');
+            
+            if(input === MY_PASSWORD) {
+                btn.innerText = "A VERIFICAR...";
+                btn.disabled = true;
+                checkAvailabilityAndTakeControl();
+            } else {
+                showLoginError("Senha Incorreta!");
+            }
+        }
+
+        function checkAvailabilityAndTakeControl() {
+            if(!initFirebase()) {
+                // Se Firebase falhar (config vazia), permite login "offline" só para testar
+                amITheController = true;
+                closeLogin();
+                uiSuccess();
+                return;
+            }
+
+            const timeout = setTimeout(() => {
+                showLoginError("Tempo esgotado. Verifique conexão.");
+            }, 8000);
+
+            const statusRef = database.ref('torre/status/lastActive');
+            if(!statusRef) {  // BUG FIX: Null check
+                clearTimeout(timeout);
+                showLoginError("Erro ao acessar banco de dados.");
+                return;
+            }
+
+            statusRef.once('value').then(snapshot => {
+                clearTimeout(timeout);
+                const lastActive = snapshot.val() || 0;
+                const now = Date.now();
+
+                // LIMITADOR (15s)
+                if (now - lastActive < 15000) {
+                    showLoginError("TORRE OCUPADA!\nAguarde 15s sem uso.");
+                } else {
+                    amITheController = true;
+                    closeLogin();
+                    startKeepAlive();
+                    uiSuccess();
+                }
+            }).catch(error => {
+                clearTimeout(timeout);
+                showLoginError("Erro Firebase: " + (error.code || error.message));  // BUG FIX: Better error message
+            });
+        }
+
+        function uiSuccess() {
+            const btnStatus = document.getElementById('connect-status-btn');
+            btnStatus.className = 'connected';
+            const lockIcon = document.getElementById('lock-icon');
+            // Usar textContent para inserir SVG como HTML completo
+            lockIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"></path></svg>';
+            document.getElementById('conn-text').innerText = "Conectado";
+            document.getElementById('status-msg').innerText = "Controle Ativo (Sua Vez)";
+            document.getElementById('status-msg').style.color = "#00ff00";
+        }
+
+        function startKeepAlive() {
+            if(keepAliveInterval) clearInterval(keepAliveInterval);
+            if(!database) return;
+            
+            try {
+                const statusRef = database.ref('torre/status/lastActive');
+                if(!statusRef) return;  // BUG FIX: Null check
+                
+                statusRef.set(Date.now()).catch(err => console.error("Erro ao iniciar keep-alive:", err));
+                
+                keepAliveInterval = setInterval(() => {
+                    try {
+                        if(database) {
+                            const ref = database.ref('torre/status/lastActive');
+                            if(ref) ref.set(Date.now()).catch(err => console.error("Erro no keep-alive:", err));
+                        }
+                    } catch(e) {
+                        console.error("Erro no intervalo keep-alive:", e);
+                    }
+                }, 5000);
+                
+                window.addEventListener('beforeunload', () => {
+                    try {
+                        if(database) {
+                            const ref = database.ref('torre/status/lastActive');
+                            if(ref) ref.set(0);
+                        }
+                    } catch(e) {
+                        console.error("Erro ao limpar keep-alive:", e);
+                    }
+                });
+            } catch(e) {
+                console.error("Erro ao iniciar keep-alive:", e);
+            }
+        }
+
+        function toggleUI() { document.getElementById('ui-layer').classList.toggle('hidden-ui'); }
+
+        let scene, camera, renderer, controls, towerMaterial, pointLight;
+        let currentEffect = 'solid'; 
+        let baseColor = new THREE.Color("#ffaa00"); 
+        let colorPicker;
+        let lastDiscoChange = 0;  // BUG FIX: Variável não declarada
+
+        function updateBackground(hexColor) {
+            document.body.style.background = `radial-gradient(circle at center, ${hexColor}33 0%, #050505 100%)`;
+        }
+
+        function updateUIButtons(effectName) {
+            document.querySelectorAll('.effect-btn').forEach(btn => btn.classList.remove('active'));
+            const btn = document.getElementById('btn-' + effectName);
+            if(btn) btn.classList.add('active');
+            
+            if(!amITheController) {
+                // Mensagem amigável para quem está só brincando
+                const labels = {
+                    'solid': 'Cor Fixa', 'rainbow': 'Arco-Íris', 'fire': 'Fogueira',
+                    'heartbeat': 'Batimento Cardíaco', 'pisca': 'Estroboscópio', 'disco': 'Disco',
+                    'fade': 'Respiração', 'police': 'Polícia', 'xmas': 'Natal',
+                    'thunder': 'Tempestade', 'sos': 'Sinal SOS', 'france': 'França',
+                    'brazil': 'Brasil', 'halloween': 'Halloween', 'ice': 'Gelo', 'candy': 'Candy',
+                    'aurora': 'Aurora Boreal', 'sunset': 'Pôr do Sol'
+                };
+                document.getElementById('status-msg').innerText = "Simulando: " + (labels[effectName] || effectName);
+                document.getElementById('status-msg').style.color = "#888";
+            }
+        }
+
+        function setEffect(effectName) {
+            // Atualiza SEMPRE localmente (Libera a diversão!)
+            currentEffect = effectName;
+            updateUIButtons(effectName);
+            
+            if(effectName === 'solid') applyColor(baseColor, 0.9, 2);
+
+            // SÓ envia para o Firebase se for o dono
+            if(amITheController && database) {
+                database.ref('torre/efeito').set(effectName);
+                if(effectName === 'solid') database.ref('torre/cor').set("#" + baseColor.getHexString());
+                database.ref('torre/status/lastActive').set(Date.now());
+            }
+        }
+        
+        function applyColor(color, opacity, intensity) {
+            towerMaterial.color.copy(color);
+            towerMaterial.opacity = opacity;
+            pointLight.color.copy(color);
+            pointLight.intensity = intensity;
+            updateBackground("#" + color.getHexString());
+        }
+
+        function updateVisuals(hexColor) {
+            baseColor.set(hexColor);
+            if (currentEffect === 'solid') applyColor(baseColor, 0.9, 2);
+        }
+
+        function init() {
+            try {
+                // Inicia reprodução de áudio
+                initAudio();
+                
+                // Tenta inicializar Firebase logo (Espectador)
+                if(firebaseConfig.apiKey !== "SUA_API_KEY") {
+                    initFirebase();
+                    setupSpectatorMode();
+                }
+
+                const container = document.getElementById('canvas-container');
+                if(!container) {
+                    console.error("Container não encontrado");
+                    return;
+                }
+                
+                scene = new THREE.Scene(); 
+                scene.fog = new THREE.FogExp2(0x050505, 0.02);
+                camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.set(0, 18, 50); 
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(window.innerWidth, window.innerHeight); 
+                renderer.setPixelRatio(window.devicePixelRatio);
+                container.appendChild(renderer.domElement);
+                scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+                pointLight = new THREE.PointLight(0xffaa00, 2, 60); 
+                pointLight.position.set(0, 15, 0); 
+                scene.add(pointLight);
+                towerMaterial = new THREE.LineBasicMaterial({ color: 0xffaa00, linewidth: 1, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+                createCustomTower();
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true; 
+                controls.dampingFactor = 0.05; 
+                controls.autoRotate = true; 
+                controls.autoRotateSpeed = 2.0; 
+                controls.target.set(0, 15, 0);
+                
+                const pickerContainer = document.getElementById('color-picker');
+                if(pickerContainer) {
+                    try {
+                        colorPicker = new iro.ColorPicker('#color-picker', { width: 220, color: "#ffaa00", borderWidth: 2, borderColor: "#fff", layout: [{ component: iro.ui.Wheel }, { component: iro.ui.Slider, options: { sliderType: 'value' } }] });
+                        
+                        colorPicker.on('color:change', (color) => {
+                            if(!color || !color.hexString) return;  // BUG FIX: Null check
+                            
+                            // Atualiza localmente SEMPRE
+                            baseColor.set(color.hexString); 
+                            if (currentEffect === 'solid') applyColor(baseColor, 0.9, 2);
+                            
+                            // Envia SÓ se for dono
+                            if(amITheController && database) {
+                                const ref = database.ref('torre/cor');
+                                if(ref) ref.set(color.hexString).catch(err => console.error("Erro ao atualizar cor:", err));
+                                const statusRef = database.ref('torre/status/lastActive');
+                                if(statusRef) statusRef.set(Date.now()).catch(err => console.error("Erro ao atualizar status:", err));
+                            }
+                        });
+                    } catch(e) {
+                        console.error("Erro ao inicializar color picker:", e);
+                    }
+                }
+                
+                updateBackground("#ffaa00");
+                animate(); 
+                window.addEventListener('resize', onResize);
+            } catch(e) {
+                console.error("Erro ao inicializar:", e);
+            }
+        }
+
+        // --- Geometria da Torre (Igual ao anterior) ---
+        function createCustomTower() {
+            const towerGroup = new THREE.Group();
+            const vertices = [], indices = [];
+            let idxCounter = 0;
+            const addV = (x, y, z) => { vertices.push(x, y, z); return idxCounter++; };
+            const addSquareLevel = (w, h) => {
+                const half = w / 2;
+                return [addV(-half, h, half), addV(half, h, half), addV(half, h, -half), addV(-half, h, -half)];
+            };
+            const connectLevels = (bot, top, cross=true) => {
+                for(let i=0; i<4; i++) { indices.push(bot[i], top[i]); indices.push(bot[i], bot[(i+1)%4]); }
+                if(cross) { for(let i=0; i<4; i++) indices.push(bot[i], top[(i+1)%4], bot[(i+1)%4], top[i]); }
+            };
+            const addArch = (idxA, idxB) => {
+                const x1 = vertices[idxA*3], y1 = vertices[idxA*3+1], z1 = vertices[idxA*3+2];
+                const x2 = vertices[idxB*3], y2 = vertices[idxB*3+1], z2 = vertices[idxB*3+2];
+                const segments = 8; const archH = 5.0; let prev = idxA;
+                for(let i=1; i<segments; i++) {
+                    let t = i/segments;
+                    let x = x1 + (x2-x1)*t; let z = z1 + (z2-z1)*t; let yBase = y1 + (y2-y1)*t; let yCurve = archH * 4 * t * (1-t);
+                    let curr = addV(x, yBase + yCurve, z); indices.push(prev, curr); prev = curr;
+                }
+                indices.push(prev, idxB);
+            };
+
+            const yFloor = 0; const wBase = 18; const yPlat1 = 13; const wPlat1 = 7;
+            const yPlat2 = 25; const wPlat2 = 3; const yTip = 42; const wTip = 1.5; 
+
+            let baseLevel = addSquareLevel(wBase, yFloor);
+            addArch(baseLevel[0], baseLevel[1]); addArch(baseLevel[1], baseLevel[2]);
+            addArch(baseLevel[2], baseLevel[3]); addArch(baseLevel[3], baseLevel[0]);
+            let prev = baseLevel; let segs1 = 4;
+            for(let i=1; i<=segs1; i++) {
+                let t = i/segs1; let curW = wBase + (wPlat1 - wBase) * t; let curY = yFloor + (yPlat1 - yFloor) * t;
+                let next = addSquareLevel(curW, curY); connectLevels(prev, next, true); prev = next;
+            }
+            let rail1 = addSquareLevel(wPlat1 + 1.2, yPlat1 + 1.2); connectLevels(prev, rail1, false); prev = addSquareLevel(wPlat1, yPlat1); 
+            let segs2 = 4;
+            for(let i=1; i<=segs2; i++) {
+                let t = i/segs2; let curW = wPlat1 + (wPlat2 - wPlat1) * t; let curY = yPlat1 + (yPlat2 - yPlat1) * t;
+                let next = addSquareLevel(curW, curY); connectLevels(prev, next, true); prev = next;
+            }
+            let rail2 = addSquareLevel(wPlat2 + 0.8, yPlat2 + 1.0); connectLevels(prev, rail2, false); prev = addSquareLevel(wPlat2, yPlat2);
+            let segs3 = 6;
+            for(let i=1; i<=segs3; i++) {
+                let t = i/segs3; let curW = wPlat2 + (wTip - wPlat2) * t; let curY = yPlat2 + (yTip - yPlat2) * t;
+                let next = addSquareLevel(curW, curY); connectLevels(prev, next, true); prev = next;
+            }
+            for(let i=0; i<4; i++) indices.push(prev[i], prev[(i+1)%4]);
+
+            const cubeSize = wTip + 0.5; const cubeH = 2.5;
+            let cubeBottom = prev; let cubeTop = addSquareLevel(cubeSize, yTip + cubeH);
+            connectLevels(cubeBottom, cubeTop, false);
+            for(let i=0; i<4; i++) indices.push(cubeTop[i], cubeTop[(i+1)%4]);
+
+            const poleHeight = 6.0; let centerTop = addV(0, yTip + cubeH, 0);
+            cubeTop.forEach(idx => indices.push(idx, centerTop));
+            let antennaTip = addV(0, yTip + cubeH + poleHeight, 0); indices.push(centerTop, antennaTip);
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setIndex(indices); geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.computeBoundingBox(); geometry.translate(0, -5, 0); 
+
+            const mesh = new THREE.LineSegments(geometry, towerMaterial);
+            towerGroup.add(mesh); scene.add(towerGroup);
+        }
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- ANIMAÇÃO COM EFEITOS (Igual) ---
+        function animate() {
+            requestAnimationFrame(animate);
+            if(controls) controls.update();
+            const now = Date.now();
+
+            if (currentEffect === 'rainbow') {
+                const hue = (now % 4000) / 4000; applyColor(new THREE.Color().setHSL(hue, 1, 0.5), 0.9, 2);
+            } else if (currentEffect === 'fire') {
+                const flicker = Math.random() * 0.1; const intensity = 1 + Math.random();
+                applyColor(new THREE.Color().setHSL(flicker, 1, 0.5), 0.8 + Math.random()*0.2, intensity);
+            } else if (currentEffect === 'heartbeat') {
+                const beat = (now % 1200) / 1200; let pulse = 0;
+                if(beat < 0.2) pulse = Math.sin(beat * Math.PI * 5); else if(beat > 0.3 && beat < 0.5) pulse = Math.sin((beat-0.3) * Math.PI * 5) * 0.6; 
+                applyColor(baseColor, 0.3 + pulse * 0.7, 0.5 + pulse * 2.5);
+            } else if (currentEffect === 'pisca') {
+                const isOn = Math.floor(now / 250) % 2 === 0; applyColor(baseColor, isOn ? 1 : 0.1, isOn ? 3 : 0);
+            } else if (currentEffect === 'disco') {
+                if (now - lastDiscoChange > 200) {
+                    const randomColor = new THREE.Color().setHSL(Math.random(), 1, 0.5); applyColor(randomColor, 1, 2); lastDiscoChange = now;
+                }
+            } else if (currentEffect === 'fade') {
+                const fade = (Math.sin(now * 0.002) + 1) / 2; applyColor(baseColor, 0.2 + fade * 0.8, fade * 3);
+            } else if (currentEffect === 'police') {
+                const isRed = Math.floor(now / 400) % 2 === 0; const color = isRed ? new THREE.Color(1, 0, 0) : new THREE.Color(0, 0, 1); applyColor(color, 1, 2);
+            } else if (currentEffect === 'xmas') {
+                const isRed = Math.floor(now / 1000) % 2 === 0; const color = isRed ? new THREE.Color(1, 0, 0) : new THREE.Color(0, 1, 0); applyColor(color, 0.9, 2);
+            } else if (currentEffect === 'thunder') {
+                if (Math.random() > 0.96) { applyColor(new THREE.Color(1, 1, 1), 1, 5); } else { applyColor(new THREE.Color(0.1, 0.1, 0.3), 0.2, 0); }
+            } else if (currentEffect === 'sos') {
+                const cycle = now % 6000; let isOn = false;
+                if (cycle < 1500) isOn = Math.floor(cycle / 250) % 2 === 0; else if (cycle > 2000 && cycle < 4250) isOn = Math.floor((cycle-2000) / 750) % 2 === 0; else if (cycle > 4750) isOn = Math.floor((cycle-4750) / 250) % 2 === 0;
+                applyColor(new THREE.Color(1, 0, 0), isOn ? 1 : 0.1, isOn ? 3 : 0);
+            } else if (currentEffect === 'france') {
+                const t = (now % 3000) / 3000; let color = new THREE.Color();
+                if (t < 0.33) { const alpha = t / 0.33; color.lerpColors(new THREE.Color(0x0055A4), new THREE.Color(0xFFFFFF), alpha); } else if (t < 0.66) { const alpha = (t - 0.33) / 0.33; color.lerpColors(new THREE.Color(0xFFFFFF), new THREE.Color(0xEF4135), alpha); } else { const alpha = (t - 0.66) / 0.34; color.lerpColors(new THREE.Color(0xEF4135), new THREE.Color(0x0055A4), alpha); }
+                applyColor(color, 1, 2);
+            } else if (currentEffect === 'brazil') {
+                const phase = Math.floor((now % 3000) / 1000); let color;
+                if (phase === 0) color = new THREE.Color(0, 1, 0); else if (phase === 1) color = new THREE.Color(1, 1, 0); else color = new THREE.Color(0, 0, 1); 
+                applyColor(color, 1, 2);
+            } else if (currentEffect === 'halloween') {
+                const isOrange = Math.floor(now / 1000) % 2 === 0; const color = isOrange ? new THREE.Color(1, 0.5, 0) : new THREE.Color(0.5, 0, 1); applyColor(color, 1, 2);
+            } else if (currentEffect === 'ice') {
+                const t = (Math.sin(now * 0.002) + 1) / 2; const color = new THREE.Color().lerpColors(new THREE.Color(1,1,1), new THREE.Color(0, 1, 1), t); applyColor(color, 0.8, 2);
+            } else if (currentEffect === 'candy') {
+                const hue = (now % 5000) / 5000; const color = new THREE.Color().setHSL(hue, 0.8, 0.7); applyColor(color, 1, 2);
+            } else if (currentEffect === 'aurora') {
+                const t = (Math.sin(now * 0.001) + 1) / 2; const color = new THREE.Color().lerpColors(new THREE.Color(0x00ffaa), new THREE.Color(0xaa00ff), t); applyColor(color, 0.8, 2);
+            } else if (currentEffect === 'sunset') {
+                const t = (Math.sin(now * 0.001) + 1) / 2; const color = new THREE.Color().lerpColors(new THREE.Color(0xffcc33), new THREE.Color(0xcc3300), t); applyColor(color, 0.9, 2);
+            }
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
