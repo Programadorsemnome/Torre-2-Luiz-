@@ -73,7 +73,7 @@ const server = http.createServer((req, res) => {
 
             app.use((req, res) => {
 
-            res.status(404).sendFile(TORRE-2-LUIZ + '/404.html');});
+            res.status(404).sendFile(TORRE-2-LUIZ+'/404.html');});
 
 
              //SE DER PROBLEMA ARRANCA AS LINHAS DE CIMA ATÉ O COMENTÁRIO DE CIMA
