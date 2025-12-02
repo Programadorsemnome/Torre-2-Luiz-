@@ -69,6 +69,15 @@ const server = http.createServer((req, res) => {
                 return;
             }
 
+            //alterei aqui em baixo até a linha 76 do res.status
+
+            app.use((req, res) => {
+
+            res.status(404).sendFile(TORRE-2-LUIZ + '/404.html');});
+
+
+             //SE DER PROBLEMA ARRANCA AS LINHAS DE CIMA ATÉ O COMENTÁRIO DE CIMA
+
             const ext = path.extname(filePath);
             const mimeTypes = {
                 '.html': 'text/html; charset=utf-8',
