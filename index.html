@@ -171,26 +171,9 @@
 <body>
 
     <!-- Audio em Loop -->
-
-
-
     <audio id="background-audio" preload="auto" loop style="display: none;">
-        
-
-
-        <!--MUDEI AQUI EM BAIXO, SE DER PROBLEMA, DAR CONTROL Z ATÉ VOLTAR A ORIGEM-->
-
-        <div>
-            <script>
-                const som = musica
-                som.play();
-            </script>
-            
-        <audio id="som"
-        src="WhatsApp Audio 2025-11-28 at 14.21.13"></audio>
-
-        </div>
-
+        <source src="Audio/Audio.mp3" type="audio/mpeg">
+    </audio>
 
     <!-- Botão de Mutar/Desmutar -->
     <button id="audio-toggle-btn" onclick="toggleAudio()" title="Mutar Áudio">
